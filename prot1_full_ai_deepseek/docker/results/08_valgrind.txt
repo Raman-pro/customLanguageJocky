@@ -1,0 +1,2 @@
+==412== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+valgrind exit code: 0 (0=clean)

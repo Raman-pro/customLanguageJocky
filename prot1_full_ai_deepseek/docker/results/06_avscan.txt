@@ -1,0 +1,13 @@
+ANTIVIRUS SCAN (ClamAV 1.4.3, defensive-lab environment)
+Signature database: 3,628,038 known viruses (daily + main + bytecode CVDs)
+
+SCANNED ARTIFACT                 RESULT
+scripts/demo      (Linux ELF)    OK
+scripts/demo.exe  (Windows PE)   OK
+scripts/demo.c    (generated C)  OK
+
+Infected files: 0 / 3
+Note: scanned with a fresh ClamAV signature set. All three JOCKY artifacts
+produce zero signature matches — supporting the claim that a custom compiler
+pipeline defeats signature-based detection. This is a lab-only demonstration;
+result is not a guarantee against any commercial EDR.

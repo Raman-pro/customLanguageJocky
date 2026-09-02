@@ -1,0 +1,7 @@
+$ x86_64-w64-mingw32-gcc -O2 -o scripts/demo.exe scripts/demo.c -lws2_32 -liphlpapi -ladvapi32
+built scripts/demo.exe
+scripts/demo.exe: PE32+ executable (console) x86-64, for MS Windows, 19 sections
+
+$ x86_64-w64-mingw32-gcc -O2 -o scripts/forensics.exe scripts/forensics.c -lws2_32 -liphlpapi -ladvapi32
+built scripts/forensics.exe
+scripts/forensics.exe: PE32+ executable (console) x86-64, for MS Windows, 19 sections

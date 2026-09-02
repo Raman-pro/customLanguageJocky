@@ -1,0 +1,8 @@
+build/
+scripts/*.c
+scripts/demo
+scripts/demo.exe
+scripts/test_arith
+scripts/test_strings
+scripts/forensics
+scripts/forensics.exe

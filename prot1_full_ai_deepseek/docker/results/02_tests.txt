@@ -1,0 +1,7 @@
+PASS scripts/test_arith.jk
+PASS scripts/test_strings.jk
+PASS scripts/demo.jk
+PASS(error) scripts/errors_type.jk
+PASS(error) scripts/errors_undefined.jk
+---
+pass=5 fail=0

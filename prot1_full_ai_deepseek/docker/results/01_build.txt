@@ -1,0 +1,26 @@
+-- The CXX compiler identification is GNU 12.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /workspace/build
+
+real	0m1.340s
+user	0m0.067s
+sys	0m0.040s
+[ 14%] Building CXX object CMakeFiles/jocky.dir/src/main.cpp.o
+[ 28%] Building CXX object CMakeFiles/jocky.dir/src/token.cpp.o
+[ 42%] Building CXX object CMakeFiles/jocky.dir/src/lexer.cpp.o
+[ 57%] Building CXX object CMakeFiles/jocky.dir/src/parser.cpp.o
+[ 71%] Building CXX object CMakeFiles/jocky.dir/src/sema.cpp.o
+[ 85%] Building CXX object CMakeFiles/jocky.dir/src/codegen.cpp.o
+[100%] Linking CXX executable jocky
+[100%] Built target jocky
+
+real	0m4.582s
+user	0m4.072s
+sys	0m0.109s
+-rwxr-xr-x 1 root root 230944 Sep  1 20:05 build/jocky

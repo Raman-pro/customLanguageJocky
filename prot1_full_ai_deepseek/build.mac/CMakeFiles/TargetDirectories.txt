@@ -1,0 +1,3 @@
+/Users/ramanjotsingh/Documents/SIH2026/prot1_full_ai_deepseek/build.mac/CMakeFiles/jocky.dir
+/Users/ramanjotsingh/Documents/SIH2026/prot1_full_ai_deepseek/build.mac/CMakeFiles/edit_cache.dir
+/Users/ramanjotsingh/Documents/SIH2026/prot1_full_ai_deepseek/build.mac/CMakeFiles/rebuild_cache.dir

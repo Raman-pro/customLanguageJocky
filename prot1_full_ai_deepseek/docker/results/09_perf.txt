@@ -1,0 +1,17 @@
+compiler build time:
+
+real	0m0.025s
+user	0m0.017s
+sys	0m0.006s
+
+demo runtime:
+
+real	0m0.001s
+user	0m0.000s
+sys	0m0.000s
+
+forensics runtime (proc+net+fs):
+
+real	0m0.001s
+user	0m0.000s
+sys	0m0.001s
