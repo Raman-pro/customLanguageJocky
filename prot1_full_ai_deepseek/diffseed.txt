@@ -1,0 +1,129 @@
+113c113
+< // JOCKY build 44171642920CB7C9 seed=-2 date=2026-09-03 02:14:13
+---
+> // JOCKY build C0D6242EABC7A1D3 seed=30 date=2026-09-03 02:15:47
+490,491c490,491
+< static volatile int32_t j_gs3ayiei = 2157;
+< static volatile int32_t j_1cz9tgan = 36962;
+---
+> static volatile int32_t j_m68qi1f1 = 6056;
+> static volatile int32_t j_cvlaawrk = 9085;
+493c493
+< static bool is_prime(int32_t n)
+---
+> static bool j_5ycndx76(int32_t j_d59c7lut)
+495c495,496
+<     if ((n < 2))
+---
+>     static volatile int64_t j_nxnrq0ld = 39558;
+>     if ((j_nxnrq0ld * j_nxnrq0ld) >= 0)
+497d497
+<         return false;
+499,500c499
+<     int32_t i = 2;
+<     while (((i * i) <= n))
+---
+>     else
+502c501,518
+<         if (((n % i) == 0))
+---
+>         printf("%d\n", 0);
+>     }
+>     static volatile int64_t j_kppnyjzh = 49452;
+>     if ((j_kppnyjzh * j_kppnyjzh) >= 0)
+>     {
+>     }
+>     else
+>     {
+>         printf("%d\n", 0);
+>     }
+>     if ((j_d59c7lut < 2))
+>     {
+>         return false;
+>     }
+>     int32_t j_s7cl3qaw = 2;
+>     while (((j_s7cl3qaw * j_s7cl3qaw) <= j_d59c7lut))
+>     {
+>         if (((j_d59c7lut % j_s7cl3qaw) == 0))
+506c522
+<         i = (i + 1);
+---
+>         j_s7cl3qaw = (j_s7cl3qaw + 1);
+512c528
+< static int32_t sum_up_to(int32_t limit)
+---
+> static int32_t j_5ztla4po(int32_t j_3fan0w53)
+514,515c530,531
+<     int32_t total = 0;
+<     for (int32_t j = 0; (j < limit); j = (j + 1))
+---
+>     static volatile int64_t j_83sd83i0 = 95343;
+>     if ((j_83sd83i0 * j_83sd83i0) >= 0)
+517d532
+<         total = (total + j);
+519c534,551
+<     return total;
+---
+>     else
+>     {
+>         printf("%d\n", 0);
+>     }
+>     static volatile int64_t j_as9johsu = 26904;
+>     if ((j_as9johsu * j_as9johsu) >= 0)
+>     {
+>     }
+>     else
+>     {
+>         printf("%d\n", 0);
+>     }
+>     int32_t j_y0hp0u4f = 0;
+>     for (int32_t j_zydpnfeo = 0; (j_zydpnfeo < j_3fan0w53); j_zydpnfeo = (j_zydpnfeo + 1))
+>     {
+>         j_y0hp0u4f = (j_y0hp0u4f + j_zydpnfeo);
+>     }
+>     return j_y0hp0u4f;
+525,530c557,558
+<     const char* greeting = "JOCKY forensic language v0.1";
+<     int32_t answer = sum_up_to(10);
+<     (void)printf("%s\n", greeting);
+<     (void)printf("%d\n", answer);
+<     const char* s = "prime";
+<     if ((is_prime(7) && (j_str_len(s) == 5)))
+---
+>     static volatile int64_t j_5vlbfl0e = 15016;
+>     if ((j_5vlbfl0e * j_5vlbfl0e) >= 0)
+531a560,571
+>     }
+>     else
+>     {
+>         printf("%d\n", 0);
+>     }
+>     const char* j_sidoi0gg = "JOCKY forensic language v0.1";
+>     int32_t j_m3ao4s60 = j_5ztla4po(10);
+>     (void)printf("%s\n", j_sidoi0gg);
+>     (void)printf("%d\n", j_m3ao4s60);
+>     const char* j_210wh03h = "prime";
+>     if ((j_5ycndx76(7) && (j_str_len(j_210wh03h) == 5)))
+>     {
+538,540c578,580
+<     int32_t count = 0;
+<     int32_t n = 2;
+<     while ((count < 3))
+---
+>     int32_t j_6sfqf220 = 0;
+>     int32_t j_d59c7lut = 2;
+>     while ((j_6sfqf220 < 3))
+542c582
+<         if (is_prime(n))
+---
+>         if (j_5ycndx76(j_d59c7lut))
+544,545c584,585
+<             (void)printf("%d\n", n);
+<             count = (count + 1);
+---
+>             (void)printf("%d\n", j_d59c7lut);
+>             j_6sfqf220 = (j_6sfqf220 + 1);
+547c587
+<         n = (n + 1);
+---
+>         j_d59c7lut = (j_d59c7lut + 1);

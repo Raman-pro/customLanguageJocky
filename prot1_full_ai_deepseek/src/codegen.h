@@ -11,9 +11,14 @@
 // When `polySeed >= 0`, all user identifiers are renamed with a per-build
 // RNG, so two builds of the same script emit different C and thus different
 // binaries (the "custom tokens" / polymorphism story). Default (-1) = no rename.
+//
+// `obfLevel` mirrors the CLI `--obf-level`. At level >= 1 the AST-level
+// obfuscation passes (src/obfuscate.cpp) already injected opaque predicates,
+// so Codegen's legacy inline opaque-predicate injection is disabled; at
+// level 0 behavior is unchanged (current opaque predicates + markers).
 class Codegen {
 public:
-    Codegen(Sema& sema, int64_t polySeed);
+    Codegen(Sema& sema, int64_t polySeed, int obfLevel = 0);
 
     // Returns the generated C program text.
     std::string emit(const Program& prog);
@@ -37,6 +42,7 @@ private:
 
     Sema& sema_;
     int64_t polySeed_;
+    int obfLevel_;
     std::mt19937_64 rng_;
     std::unordered_map<std::string, std::string> renames_;
     std::string out_;

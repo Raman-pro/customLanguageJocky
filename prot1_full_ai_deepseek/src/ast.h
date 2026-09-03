@@ -35,7 +35,8 @@ struct Stmt {
         For,        // for (init; cond; step) body
         Return,     // return [expr];
         ExprStmt,   // expr;
-        Fn          // fn name(params) [: ret] { body }
+        Fn,         // fn name(params) [: ret] { body }
+        Switch      // internal only: produced by the CFG-obfuscation pass (flattening)
     };
     K kind;
     Token tok;
@@ -67,6 +68,11 @@ struct Stmt {
     std::string fnRetType;       // "int" | "str" | "bool" | "void"
     std::vector<std::pair<std::string, std::string>> params;  // (name, type)
     std::vector<StmtPtr> fnBody;
+
+    // Switch (internal, produced by obfuscation flattening)
+    ExprPtr switchExpr;                                 // dispatch expression
+    std::vector<std::pair<int64_t, std::vector<StmtPtr>>> cases;  // (case value, body)
+    std::vector<StmtPtr> defaultCase;                   // default body
 };
 
 // Program = list of top-level statements (functions, global lets).

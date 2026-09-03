@@ -1,7 +1,9 @@
 #include "ast.h"
 #include "codegen.h"
 #include "lexer.h"
+#include "obfuscate.h"
 #include "parser.h"
+#include "postprocess.h"
 #include "sema.h"
 
 #include <cstdlib>
@@ -57,6 +59,14 @@ static void dumpStmt(const Stmt& s, int depth) {
             std::cout << ")\n";
             for (auto& st : s.fnBody) dumpStmt(*st, depth + 1);
             break;
+        case Stmt::K::Switch:
+            pad(); std::cout << "Switch\n";
+            dumpExpr(*s.switchExpr, depth + 1);
+            for (auto& c : s.cases) {
+                pad(); std::cout << "Case " << c.first << ":\n";
+                for (auto& st : c.second) dumpStmt(*st, depth + 2);
+            }
+            break;
     }
 }
 
@@ -106,7 +116,11 @@ static void usage() {
         "  -o <file.c>       write generated C to a file\n"
         "  --build           write C and invoke a C compiler\n"
         "  --target <t>      for --build: linux (default) | mingw (Windows exe)\n"
-        "  --seed <n>        polymorphism seed (-1 = no renaming, default = random)\n";
+        "  --seed <n>        polymorphism seed (-1 = no renaming, default = random)\n"
+        "  --obf-level <0-3> CFG obfuscation level (default: 2 when --seed used, else 0)\n"
+        "                      0 none | 1 opaque preds + dead code\n"
+        "                      2 + CFG flattening + bogus CF + string encryption\n"
+        "                      3 + constant noise + trampolines + junk functions\n";
 }
 
 int main(int argc, char** argv) {
@@ -114,6 +128,7 @@ int main(int argc, char** argv) {
     bool doBuild = false;
     std::string inFile, outFile, target = "linux";
     int64_t seed = -2;  // -2 => random (choose at codegen)
+    int obfLevel = -1;  // -1 => auto (2 when --seed used, else 0)
 
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -125,11 +140,14 @@ int main(int argc, char** argv) {
         else if (a == "-o" && i + 1 < argc) outFile = argv[++i];
         else if (a == "--target" && i + 1 < argc) target = argv[++i];
         else if (a == "--seed" && i + 1 < argc) seed = std::stoll(argv[++i]);
+        else if (a == "--obf-level" && i + 1 < argc) obfLevel = std::stoi(argv[++i]);
         else if (!a.empty() && a[0] != '-') inFile = a;
         else { usage(); return 1; }
     }
 
     if (inFile.empty()) { usage(); return 1; }
+    if (obfLevel < 0) obfLevel = (seed >= 0) ? 2 : 0;
+    if (obfLevel < 0 || obfLevel > 3) { usage(); return 1; }
 
     try {
         std::string src = readFile(inFile);
@@ -154,8 +172,21 @@ int main(int argc, char** argv) {
         sema.check(prog);
         if (checkOnly) { std::cout << "OK\n"; return 0; }
 
-        Codegen codegen(sema, seed);
+        // AST-level obfuscation passes run after sema (so injected nodes never
+        // need a type check) and before codegen.
+        if (obfLevel >= 1) {
+            std::mt19937_64 obfRng(seed >= 0 ? static_cast<uint64_t>(seed) : std::random_device{}());
+            obfuscate::run(prog, obfRng, obfLevel);
+        }
+
+        Codegen codegen(sema, seed, obfLevel);
         std::string c = codegen.emit(prog);
+
+        // C-level post-processing on the emitted source.
+        if (obfLevel >= 2) {
+            std::mt19937_64 postRng(seed >= 0 ? static_cast<uint64_t>(seed) + 1 : std::random_device{}());
+            c = postprocess::run(std::move(c), postRng, obfLevel);
+        }
 
         if (emitC) { std::cout << c; return 0; }
 

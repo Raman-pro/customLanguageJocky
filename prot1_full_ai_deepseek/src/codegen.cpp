@@ -22,14 +22,20 @@ static const std::unordered_map<std::string, std::string> kRuntimeFns = {
     {"mem.dump",         "j_mem_dump"},
 };
 
-Codegen::Codegen(Sema& sema, int64_t polySeed)
-    : sema_(sema), polySeed_(polySeed),
+Codegen::Codegen(Sema& sema, int64_t polySeed, int obfLevel)
+    : sema_(sema), polySeed_(polySeed), obfLevel_(obfLevel),
       rng_(polySeed >= 0 ? static_cast<uint64_t>(polySeed) : std::random_device{}()) {}
 
 std::string Codegen::typeToC(const std::string& t) {
     if (t == "int") return "int32_t";
     if (t == "str") return "const char*";
     if (t == "bool") return "bool";
+    // Internal type used by the obfuscation pass: a function-local guard that
+    // the optimizer must not fold away. The `_local` variant is a non-static
+    // local (may hold a runtime-computed initializer); the plain variant is a
+    // `static` local (constant initializer only).
+    if (t == "volatile_int64") return "static volatile int64_t";
+    if (t == "volatile_int64_local") return "volatile int64_t";
     return "void";
 }
 
@@ -529,6 +535,25 @@ static void j_mem_dump(int32_t pid, const char* path) {
 
     out_ += emitBuildMarker();
 
+    // Forward declarations for all user functions. Sema already resolves calls
+    // to functions declared later in the file, so the generated C must too --
+    // otherwise a function calling a function defined below it would fail to
+    // compile (C requires a declaration before use for static functions).
+    bool hasUserFns = false;
+    for (auto& s : prog.stmts) {
+        if (s->kind == Stmt::K::Fn && s->fnName != "main") {
+            hasUserFns = true;
+            std::string proto = "static " + typeToC(s->fnRetType) + " " + cname(s->fnName) + "(";
+            for (size_t i = 0; i < s->params.size(); ++i) {
+                if (i) proto += ", ";
+                proto += typeToC(s->params[i].second) + " " + cname(s->params[i].first);
+            }
+            proto += ");";
+            line(proto);
+        }
+    }
+    if (hasUserFns) out_ += "\n";
+
     // Emit user functions (all but main).
     for (auto& s : prog.stmts) {
         if (s->kind == Stmt::K::Fn && s->fnName != "main") emitStmt(*s);
@@ -537,7 +562,7 @@ static void j_mem_dump(int32_t pid, const char* path) {
     // Emit main.
     line("int32_t main(void)");
     openBlock();
-    injectOpaquePredicates();
+    if (obfLevel_ < 1) injectOpaquePredicates();
     for (auto* s : topLevelStmts_) emitStmt(*s);
     if (mainFn_) {
         for (auto& body : mainFn_->fnBody) emitStmt(*body);
@@ -605,6 +630,24 @@ void Codegen::emitStmt(Stmt& s) {
             else line("return;");
             break;
         }
+        case Stmt::K::Switch: {
+            line("switch (" + emitExpr(*s.switchExpr) + ")");
+            openBlock();
+            for (auto& c : s.cases) {
+                line("case " + std::to_string(c.first) + ":");
+                indent_++;
+                for (auto& st : c.second) emitStmt(*st);
+                line("break;");
+                indent_--;
+            }
+            line("default:");
+            indent_++;
+            for (auto& st : s.defaultCase) emitStmt(*st);
+            line("break;");
+            indent_--;
+            closeBlock();
+            break;
+        }
         case Stmt::K::Fn: {
             std::string retC = s.fnName == "main" ? "int32_t" : typeToC(s.fnRetType);
             std::string sig = "static " + retC + " " + cname(s.fnName) + "(";
@@ -615,7 +658,7 @@ void Codegen::emitStmt(Stmt& s) {
             sig += ")";
             line(sig);
             openBlock();
-            injectOpaquePredicates();
+            if (obfLevel_ < 1) injectOpaquePredicates();
             for (auto& body : s.fnBody) emitStmt(*body);
             // satisfy C on non-void functions that might fall off the end
             if (s.fnRetType != "void") line("return 0;");

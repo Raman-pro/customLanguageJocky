@@ -15,6 +15,8 @@ add_executable(jocky
     src/parser.cpp
     src/sema.cpp
     src/codegen.cpp
+    src/obfuscate.cpp
+    src/postprocess.cpp
 )
 
 target_compile_options(jocky PRIVATE -Wall -Wextra)

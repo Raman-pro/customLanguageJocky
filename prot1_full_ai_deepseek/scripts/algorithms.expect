@@ -1,0 +1,57 @@
+== fibonacci (iterative) ==
+0
+1
+55
+6765
+== fibonacci (recursive) ==
+0
+1
+55
+== factorial ==
+1
+120
+40320
+== greatest common divisor ==
+12
+1
+10
+== primality ==
+true
+true
+false
+true
+== primes up to 30 ==
+2
+3
+5
+7
+11
+13
+17
+19
+23
+29
+== collatz steps ==
+0
+111
+8
+== sum of digits ==
+0
+15
+27
+== reverse digits ==
+54321
+-321
+7
+== power ==
+1024
+27
+1
+== min / max of three ==
+9
+3
+-1
+== palindrome number ==
+true
+true
+false

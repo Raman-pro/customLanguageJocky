@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/jocky.dir/src/main.cpp.o CMakeFiles/jocky.dir/src/token.cpp.o CMakeFiles/jocky.dir/src/lexer.cpp.o CMakeFiles/jocky.dir/src/parser.cpp.o CMakeFiles/jocky.dir/src/sema.cpp.o CMakeFiles/jocky.dir/src/codegen.cpp.o -o jocky

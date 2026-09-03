@@ -1,0 +1,172 @@
+// forensics.c — hand-written C equivalent of scripts/forensics.jk
+// Implements the same evidence collectors directly with OS APIs.
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <dirent.h>
+
+#if defined(__APPLE__)
+#include <libproc.h>
+#endif
+
+static char g_buf[65536];
+
+static void json_escape(char* out, size_t cap, const char* in) {
+    size_t o = 0;
+    for (const char* p = in; *p && o + 2 < cap; ++p) {
+        if (*p == '"' || *p == '\\') out[o++] = '\\';
+        out[o++] = *p;
+    }
+    out[o] = '\0';
+}
+
+static const char* now_str(void) {
+    time_t t = time(NULL);
+    struct tm tmv;
+    localtime_r(&t, &tmv);
+    strftime(g_buf, sizeof g_buf, "%Y-%m-%dT%H:%M:%S", &tmv);
+    return g_buf;
+}
+
+static const char* cwd_str(void) {
+    if (!getcwd(g_buf, sizeof g_buf)) return "";
+    return g_buf;
+}
+
+static const char* process_list(void) {
+    size_t off = 0;
+    g_buf[off++] = '[';
+    int first = 1;
+#if defined(__APPLE__)
+    int all_pids[8192];
+    int np = proc_listallpids(all_pids, sizeof all_pids);
+    for (int i = 0; i < np; ++i) {
+        int pid = all_pids[i];
+        char name[256];
+        int len = proc_name(pid, name, sizeof name);
+        if (len <= 0) snprintf(name, sizeof name, "pid_%d", pid);
+        char esc[512];
+        json_escape(esc, sizeof esc, name);
+        if (!first) g_buf[off++] = ',';
+        first = 0;
+        int n = snprintf(g_buf + off, sizeof g_buf - off, "{\"pid\":%d,\"name\":\"%s\"}", pid, esc);
+        off += (size_t)(n > 0 ? n : 0);
+    }
+#else
+    DIR* d = opendir("/proc");
+    if (d) {
+        struct dirent* de;
+        while ((de = readdir(d)) != NULL) {
+            if (de->d_name[0] < '0' || de->d_name[0] > '9') continue;
+            int pid = atoi(de->d_name);
+            char p[64], name[256];
+            snprintf(p, sizeof p, "/proc/%d/comm", pid);
+            FILE* f = fopen(p, "r");
+            if (f) {
+                if (fgets(name, sizeof name, f)) name[strcspn(name, "\n")] = '\0';
+                fclose(f);
+                char esc[512];
+                json_escape(esc, sizeof esc, name);
+                if (!first) g_buf[off++] = ',';
+                first = 0;
+                int n = snprintf(g_buf + off, sizeof g_buf - off, "{\"pid\":%d,\"name\":\"%s\"}", pid, esc);
+                off += (size_t)(n > 0 ? n : 0);
+            }
+        }
+        closedir(d);
+    }
+#endif
+    g_buf[off++] = ']';
+    g_buf[off] = '\0';
+    return g_buf;
+}
+
+static const char* sockets(void) {
+    size_t off = 0;
+    g_buf[off++] = '[';
+    int first = 1;
+    FILE* ns = popen("netstat -an -p tcp 2>/dev/null", "r");
+    if (ns) {
+        char line[512];
+        while (fgets(line, sizeof line, ns)) {
+            char proto[8], laddr[64], raddr[64], st[32];
+            if (sscanf(line, "%7s %*s %*s %63s %63s %31s", proto, laddr, raddr, st) == 4) {
+                if (strncmp(proto, "tcp", 3) != 0) continue;
+                if (!first) g_buf[off++] = ',';
+                first = 0;
+                int n = snprintf(g_buf + off, sizeof g_buf - off,
+                                 "{\"local\":\"%s\",\"remote\":\"%s\",\"state\":\"%s\"}", laddr, raddr, st);
+                off += (size_t)(n > 0 ? n : 0);
+            }
+        }
+        pclose(ns);
+    }
+    g_buf[off++] = ']';
+    g_buf[off] = '\0';
+    return g_buf;
+}
+
+static const char* fs_list(const char* dir) {
+    size_t off = 0;
+    g_buf[off++] = '[';
+    int first = 1;
+    DIR* d = opendir(dir);
+    if (d) {
+        struct dirent* de;
+        while ((de = readdir(d)) != NULL) {
+            if (de->d_name[0] == '.') continue;
+            if (!first) g_buf[off++] = ',';
+            first = 0;
+            char esc[1024];
+            json_escape(esc, sizeof esc, de->d_name);
+            int n = snprintf(g_buf + off, sizeof g_buf - off, "\"%s\"", esc);
+            off += (size_t)(n > 0 ? n : 0);
+        }
+        closedir(d);
+    }
+    g_buf[off++] = ']';
+    g_buf[off] = '\0';
+    return g_buf;
+}
+
+static const char* fs_read(const char* path) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return "";
+    size_t n = fread(g_buf, 1, sizeof g_buf - 1, f);
+    fclose(f);
+    g_buf[n] = '\0';
+    return g_buf;
+}
+
+static void fs_write(const char* path, const char* data) {
+    FILE* f = fopen(path, "wb");
+    if (f) { fputs(data, f); fclose(f); }
+}
+
+static int fs_exists(const char* path) {
+    return access(path, F_OK) == 0;
+}
+
+int main(void) {
+    printf("=== SYSTEM ===\n");
+    printf("%s\n", now_str());
+    printf("%s\n", cwd_str());
+    const char* user = getenv("USER");
+    printf("%s\n", user ? user : "");
+    printf("=== PROCESSES (JSON) ===\n");
+    printf("%s\n", process_list());
+    printf("=== TCP SOCKETS (JSON) ===\n");
+    printf("%s\n", sockets());
+    printf("=== FS /tmp (JSON) ===\n");
+    printf("%s\n", fs_list("/tmp"));
+    printf("%s\n", fs_exists("/tmp") ? "true" : "false");
+    fs_write("/tmp/jocky_test.txt", "hello from jocky\n");
+    printf("%s\n", fs_read("/tmp/jocky_test.txt"));
+    printf("=== REGISTRY (Windows only) ===\n");
+    printf("[]\n");
+    printf("=== MEM DUMP (Windows only, pid=1) ===\n");
+    printf("done\n");
+    return 0;
+}

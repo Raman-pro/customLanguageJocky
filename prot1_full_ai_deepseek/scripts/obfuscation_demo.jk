@@ -1,0 +1,77 @@
+// ============================================================================
+//  JOCKY — Obfuscation Demo
+//
+//  A representative "module": string literals, functions, loops and branching.
+//  It is fully deterministic, so its output is identical at every obfuscation
+//  level even though the emitted C (and the binary) is completely different.
+//
+//  Run the end-to-end demonstration:
+//      ./scripts/demo_obfuscation.sh
+//
+//  Or by hand:
+//      ./build/jocky --seed 1 --obf-level 0 --build scripts/obfuscation_demo.jk
+//      ./build/jocky --seed 1 --obf-level 3 --build scripts/obfuscation_demo.jk
+//      shasum -a 256 scripts/obfuscation_demo          # hashes differ
+//      strings scripts/obfuscation_demo | grep collatz  # nothing at level 3
+//
+//  Expected output is stored in scripts/obfuscation_demo.expect.
+// ============================================================================
+
+// Returns a word describing the sign/parity of n.
+fn describe(n: int) : str {
+    if (n < 0) {
+        return "negative";
+    }
+    if (n == 0) {
+        return "zero";
+    }
+    if (n % 2 == 0) {
+        return "even";
+    }
+    return "odd";
+}
+
+// One Collatz step: n -> n/2 (even) or 3n+1 (odd).
+fn step(n: int) : int {
+    if (n % 2 == 0) {
+        return n / 2;
+    }
+    return n * 3 + 1;
+}
+
+// Number of Collatz steps needed to reach 1 from n.
+fn collatz_count(n: int) : int {
+    let count: int = 0;
+    let x: int = n;
+    while (x != 1) {
+        x = step(x);
+        count = count + 1;
+    }
+    return count;
+}
+
+fn main() {
+    print("=== COLLATZ STEPS ===");
+    let i: int = 1;
+    while (i <= 8) {
+        print(collatz_count(i));
+        i = i + 1;
+    }
+
+    print("=== CLASSIFICATION ===");
+    for (let j = -3; j <= 6; j = j + 1) {
+        print(describe(j));
+    }
+
+    print("=== AGGREGATE ===");
+    let total: int = 0;
+    let n: int = 1;
+    while (n <= 10) {
+        total = total + collatz_count(n);
+        n = n + 1;
+    }
+    print(total);
+
+    print("=== RESULT ===");
+    print("all builds produce identical output");
+}

@@ -137,6 +137,11 @@ void Sema::checkStmt(Stmt& s) {
         case Stmt::K::Fn:
             errorAt(s.tok, "nested function declarations are not allowed");
             break;
+        // Switch nodes are synthesized by the obfuscation pass AFTER sema
+        // has run, so they never reach this switch. Kept only so the enum
+        // stays exhaustively covered.
+        case Stmt::K::Switch:
+            break;
     }
 }
 
