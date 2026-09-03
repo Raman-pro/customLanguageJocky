@@ -392,3 +392,97 @@ python3 metrics.py  # CFG comparison table → metrics/cfg_metrics.txt
 Artifacts: `c_equiv/` (hand-written C), `c_emitted/` (JOCKY-emitted C per level),
 `builds/` (30 binaries), `decomp/` (Ghidra output), `metrics/` (tables).
 Ghidra post-script: `ghidra_script/ExportDecomp.java`.
+
+---
+
+# PART II — Antivirus triggering: plain C vs the JOCKY build
+
+**Question asked:** write a C program that antivirus flags, port the same logic to
+JOCKY, build it, and test whether the JOCKY binary is still triggered by AV.
+
+## P2.1 The bait
+
+`av_test/av_bait.c` / `av_test/av_bait.jk` — a benign "credential-collection / recon"
+sample embedding three **AV byte-signature markers**:
+
+| marker | purpose | bytes |
+|---|---|---|
+| `sekurlsa::logonpasswords` | mimikatz credential-theft command string | no `%` |
+| `c2.evil-domain.com/beacon` | hardcoded C2 beacon URL | no `%` |
+| EICAR test string | canonical AV test string | **contains `%`** |
+
+Both files implement the identical behavior profile (process enumeration,
+`/etc/passwd`+`/etc/shadow` reads, env credential dump, staging write to `/tmp`,
+Windows `mem.dump`) — the C via libc calls, the JOCKY via its forensic builtins.
+
+## P2.2 What we scanned and how
+
+- Binaries: `c_av_bait` (cc -O2), `jk_av_bait_l0`, `jk_av_bait_l2`, `jk_av_bait_l3`
+  (jocky, seed 31337) + sources and emitted C.
+- Engine: **ClamAV 1.x** in a Docker container (arm64), real CVD database
+  (`main` 3,287,027 + `daily` + `bytecode` sigs) downloaded via freshclam.
+- Plus a **custom `.ndb` signature file** (`custom.ndb`) containing one byte-pattern
+  rule per marker — this models exactly how a commercial AV signature engine works
+  (it is how any AV vendor would flag the sample's distinctive strings).
+
+> Note: ClamAV's built-in `Eicar-Test-Signature` only fires on a whole-file EICAR,
+> and real CVD signatures target specific malware *families*, so a hand-written
+> sample will not hit the real DB. The `.ndb` rules give the deterministic,
+> mechanism-identical test.
+
+## P2.3 Results
+
+Scan with `--allmatch` using the custom signature DB:
+
+| artifact | `MimikatzCmd` | `C2Domain` | `EicarEmbedded` |
+|---|---|---|---|
+| `av_bait.c` (C source) | **FOUND** | **FOUND** | — |
+| `av_bait.jk` (JOCKY source) | **FOUND** | **FOUND** | — |
+| `av_bait_l0_emitted.c` | **FOUND** | **FOUND** | — |
+| `c_av_bait` (plain C binary) | **FOUND** | **FOUND** | **FOUND** |
+| `jk_av_bait_l0` | **FOUND** | **FOUND** | **FOUND** |
+| **`jk_av_bait_l2`** | clean | clean | **FOUND** |
+| **`jk_av_bait_l3`** | clean | clean | **FOUND** |
+
+Scan with the real ClamAV database: only the standalone EICAR file is flagged;
+all binaries/sources are clean (hand-written sample matches no family).
+
+## P2.4 Why this happens (verified in the emitted C)
+
+- **Level 2/3 string encryption is effective for ordinary strings.** At level 3,
+  `sekurlsa::logonpasswords` and `c2.evil-domain.com/beacon` become `j_dc_N()`
+  decryptor calls and their bytes are XOR blobs — so byte-signature rules stop
+  matching. A commercial AV using a byte/string signature for the plain C binary
+  would **miss** the level-2/3 JOCKY builds.
+- **Strings containing `%` are NEVER encrypted.** The encryption pass skips any
+  literal containing `%` (`src/postprocess.cpp:164`) to protect `printf` format
+  strings. The EICAR string (`X5O!P%@AP[4\PZX…`) contains `%`, so it stays a
+  **plaintext literal** in the emitted C and in the binary at *every* level
+  (confirmed: `EicarEmbedded` is FOUND in l0, l2 and l3). Any signature string
+  containing `%` will survive JOCKY's strongest obfuscation.
+- **`strings` confirms it:** mimikatz/c2 present in `c_av_bait` and `jk_av_bait_l0`,
+  absent from l2/l3; EICAR present in all four.
+
+## P2.5 Conclusions (AV test)
+
+1. **Answer to the question:** the plain-C bait is flagged; the JOCKY build of the
+   *same logic* is **not** flagged at obfuscation level 2+, because the signature
+   bytes are XOR-encrypted and never appear in the binary.
+2. **Level 0 gives no evasion at all** — strings are in clear, so a byte-signature
+   AV flags the level-0 JOCKY binary exactly like the C binary.
+3. **Blind spot:** `%`-containing signature strings (EICAR, printf formats) are
+   never encrypted, so they remain detectable at every level. An AV signature
+   writer would trivially target such strings.
+4. **Honest caveat:** this tested *byte-signature* detection. Behavioral/EDR
+   detection (API telemetry such as `proc_listallpids`, `netstat`, `OpenProcess`)
+   is unaffected by obfuscation — the forensic API surface (§7) is a fingerprint
+   at every level.
+5. **Bug found while building the test:** JOCKY level-3 emits **invalid C** for any
+   program whose string literals contain `{` or `}`. `trampolineMain` used a naive
+   brace counter that counted braces inside string literals, so the EICAR `}` broke
+   the trampoline insertion mid-function. Fixed in `src/postprocess.cpp`
+   (`findMatchingBrace`, string/char/comment-aware) and the compiler rebuilt;
+   level-3 then compiles cleanly.
+
+Artifacts: `av_test/` (sources, binaries, `custom.ndb`, scan logs in
+`scan_results_custom_sig.txt` / `scan_results_real_db.txt`, `Dockerfile.scan`).

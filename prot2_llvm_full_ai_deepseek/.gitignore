@@ -1,0 +1,13 @@
+build/
+scripts/*.o
+scripts/*_rt.o
+scripts/demo
+scripts/demo.exe
+scripts/system
+scripts/tour
+scripts/algorithms
+scripts/test_arith
+scripts/test_strings
+scripts/forensics
+*.expect.out
+.DS_Store

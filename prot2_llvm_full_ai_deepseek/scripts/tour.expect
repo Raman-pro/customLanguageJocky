@@ -1,0 +1,80 @@
+== integers ==
+0
+42
+-17
+1000000
+== booleans ==
+true
+false
+== strings ==
+hello, world
+
+escaped: \ backslash, " quote
+line1
+line2
+== variables ==
+10
+20
+jocky
+true
+false
+== arithmetic ==
+14
+20
+5
+14
+2
+-7
+6
+3
+== comparisons ==
+true
+true
+true
+true
+false
+false
+== logic ==
+true
+false
+true
+false
+true
+== string operations ==
+5
+0
+true
+false
+false
+== if / else ==
+odd
+after if
+== while ==
+0
+1
+2
+== for ==
+0
+1
+2
+3
+== assignment ==
+5
+5
+== shadowing ==
+2
+1
+== functions ==
+42
+5
+hello from a void function
+120
+55
+adult
+== mutual recursion ==
+true
+false
+false
+== composition ==
+8
+120
