@@ -1,0 +1,11 @@
+# Minimal arm64 ClamAV scanner for JOCKY AV-evasion tests (lab use).
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clamav \
+    clamav-freshclam \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/lib/clamav \
+    && printf 'DatabaseMirror db.local.clamav.net\nDatabaseMirror database.clamav.net\nMaxAttempts 3\n' > /etc/clamav/freshclam.conf
+WORKDIR /scan
+CMD ["/bin/bash"]

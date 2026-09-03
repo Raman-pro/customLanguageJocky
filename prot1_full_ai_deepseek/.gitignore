@@ -1,5 +1,4 @@
 build/
-scripts/*.c
 scripts/demo
 scripts/demo.exe
 scripts/test_arith

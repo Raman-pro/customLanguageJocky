@@ -348,18 +348,47 @@ void injectJunkFunctions(std::string& c, std::mt19937_64& rng) {
 // Pass 7: trampoline / entry-point shuffle.
 // ---------------------------------------------------------------------------
 
+// Brace-aware matcher: finds the '}' that closes the block opening at `brace`,
+// ignoring '{' / '}' that live inside string literals, char literals, or
+// line comments. The naive counter broke on any string containing '{' or '}'
+// (e.g. the EICAR test string), inserting trampolines mid-function.
+size_t findMatchingBrace(const std::string& c, size_t brace) {
+    int depth = 0;
+    bool inStr = false, inChr = false;
+    for (size_t i = brace; i < c.size(); ++i) {
+        char ch = c[i];
+        if (inStr) {
+            if (ch == '\\') { ++i; continue; }
+            if (ch == '"') inStr = false;
+            continue;
+        }
+        if (inChr) {
+            if (ch == '\\') { ++i; continue; }
+            if (ch == '\'') inChr = false;
+            continue;
+        }
+        if (ch == '"') { inStr = true; continue; }
+        if (ch == '\'') { inChr = true; continue; }
+        if (ch == '/' && i + 1 < c.size() && c[i + 1] == '/') {
+            while (i < c.size() && c[i] != '\n') ++i;
+            continue;
+        }
+        if (ch == '{') ++depth;
+        else if (ch == '}') {
+            --depth;
+            if (depth == 0) return i;
+        }
+    }
+    return std::string::npos;
+}
+
 void trampolineMain(std::string& c, std::mt19937_64& rng) {
     const std::string sig = "int32_t main(void)";
     size_t pos = c.find(sig);
     if (pos == std::string::npos) return;
     size_t brace = c.find('{', pos);
     if (brace == std::string::npos) return;
-    int depth = 0;
-    size_t end = std::string::npos;
-    for (size_t i = brace; i < c.size(); ++i) {
-        if (c[i] == '{') ++depth;
-        else if (c[i] == '}') { --depth; if (depth == 0) { end = i; break; } }
-    }
+    size_t end = findMatchingBrace(c, brace);
     if (end == std::string::npos) return;
 
     std::string body = c.substr(brace, end - brace + 1);
