@@ -10,6 +10,8 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/ModuleUtils.h>
 
+#include <unordered_set>
+
 namespace obfuscate {
 namespace {
 
@@ -53,8 +55,14 @@ void insertOpaquePredicate(llvm::Function& F, llvm::GlobalVariable* marker,
     // `pred` is now the function's first block => the new entry.
     llvm::IRBuilder<> b(pred);
     llvm::Value* g = b.CreateLoad(llvm::Type::getInt32Ty(C), marker, /*isVolatile=*/true, "j_g");
-    llvm::Value* sq = b.CreateMul(g, g, "j_sq");
-    llvm::Value* c = b.CreateICmpSGE(sq, llvm::ConstantInt::get(llvm::Type::getInt32Ty(C), 0), "j_c");
+    // Promote to 64-bit before squaring: the marker can be up to 0xFFFF, and
+    // g*g in 32-bit signed arithmetic overflows for g > 46340 (e.g. 61233^2
+    // wraps negative), which would make the "always true" predicate FALSE and
+    // route execution into the dead branch. In 64-bit the product always fits
+    // and g*g >= 0 holds unconditionally.
+    llvm::Value* ge = b.CreateSExt(g, llvm::Type::getInt64Ty(C), "j_ge");
+    llvm::Value* sq = b.CreateMul(ge, ge, "j_sq");
+    llvm::Value* c = b.CreateICmpSGE(sq, llvm::ConstantInt::get(llvm::Type::getInt64Ty(C), 0), "j_c");
     b.CreateCondBr(c, orig, dead);
 
     llvm::IRBuilder<> db(dead);
@@ -127,19 +135,30 @@ void run(llvm::Module& M, std::mt19937_64& rng, int level) {
     llvm::GlobalVariable* marker = getMarker(M, rng);
 
     llvm::Function* junk = nullptr;
+    std::unordered_set<llvm::Function*> junkFns;
     if (level >= 2) {
         junk = makeJunkFunction(M, rng);
+        junkFns.insert(junk);
         std::vector<llvm::GlobalValue*> keep = {junk};
         llvm::appendToCompilerUsed(M, keep);
         // A couple of extra unreferenced junk functions at level 3.
         int extra = (level >= 3) ? 2 + static_cast<int>(rng() % 3) : 0;
         std::vector<llvm::GlobalValue*> more;
-        for (int i = 0; i < extra; ++i) more.push_back(makeJunkFunction(M, rng));
+        for (int i = 0; i < extra; ++i) {
+            llvm::Function* jf = makeJunkFunction(M, rng);
+            junkFns.insert(jf);
+            more.push_back(jf);
+        }
         if (!more.empty()) llvm::appendToCompilerUsed(M, more);
     }
 
     for (auto& F : M) {
         if (F.isDeclaration()) continue;
+        // Never insert opaque predicates into the junk functions: they are
+        // unreferenced dead code, and their predicate's dead branch calls
+        // `junk` (== themselves), which turns the dead branch into an
+        // unbounded self-recursion if it is ever reached.
+        if (junkFns.count(&F)) continue;
         int n = 1 + static_cast<int>(rng() % 3);
         for (int i = 0; i < n; ++i) insertOpaquePredicate(F, marker, junk, rng);
     }

@@ -12,6 +12,8 @@ static const std::unordered_map<std::string, FnSig> kBuiltins = {
     {"sys.sleep",        {"void", {"int"}}},
     {"env.get",          {"str", {"str"}}},
     {"net.sockets",      {"str", {}}},
+    {"net.post",         {"void", {"str", "str"}}},
+    {"net.send",         {"void", {}}},
     {"fs.read",          {"str", {"str"}}},
     {"fs.write",         {"void", {"str", "str"}}},
     {"fs.list",          {"str", {"str"}}},

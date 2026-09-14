@@ -28,6 +28,8 @@ const std::unordered_map<std::string, RtSig> kRuntimeSigs = {
     {"sys.sleep",        {"void", {"i32"}}},
     {"env.get",          {"ptr", {"ptr"}}},
     {"net.sockets",      {"ptr", {}}},
+    {"net.post",         {"void", {"ptr", "ptr"}}},
+    {"net.send",         {"void", {}}},
     {"fs.read",          {"ptr", {"ptr"}}},
     {"fs.write",         {"void", {"ptr", "ptr"}}},
     {"fs.list",          {"ptr", {"ptr"}}},
