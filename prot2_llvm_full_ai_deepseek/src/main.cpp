@@ -7,6 +7,9 @@
 
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/StandardInstrumentations.h>
@@ -19,9 +22,11 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -116,6 +121,45 @@ static void writeFile(const std::string& path, const std::string& text) {
     std::ofstream f(path, std::ios::binary);
     if (!f) throw std::runtime_error("cannot write file: " + path);
     f << text;
+}
+
+// Run a shell command and capture its stdout (used to locate the mingw sysroot).
+static std::string runCapture(const std::string& cmd) {
+    std::string out;
+#if defined(_WIN32)
+    FILE* p = _popen(cmd.c_str(), "r");
+#else
+    FILE* p = popen(cmd.c_str(), "r");
+#endif
+    if (!p) return out;
+    char buf[4096];
+    while (std::fgets(buf, sizeof buf, p)) out += buf;
+#if defined(_WIN32)
+    _pclose(p);
+#else
+    pclose(p);
+#endif
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r' || out.back() == ' '))
+        out.pop_back();
+    return out;
+}
+
+// Compile runtime/runtime.c to textual LLVM IR with the bundled clang, so it
+// can be linked into the user module and obfuscated as a single unit. For mingw
+// we borrow the Windows headers from the mingw-w64 sysroot.
+static bool compileRuntimeIR(const std::string& runtimeC, const std::string& outLL,
+                             const std::string& target) {
+    std::string clang = JOCKY_CLANG;
+    if (!llvm::sys::fs::exists(clang)) clang = "clang";   // fall back to PATH
+    std::string cmd = std::string("\"") + clang + "\" -O2 -S -emit-llvm";
+    if (target == "mingw") {
+        cmd += " --target=x86_64-pc-windows-gnu";
+        std::string sysroot = runCapture("x86_64-w64-mingw32-gcc -print-sysroot 2>/dev/null");
+        if (!sysroot.empty()) cmd += " --sysroot=\"" + sysroot + "\"";
+    }
+    cmd += " \"" + runtimeC + "\" -o \"" + outLL + "\"";
+    std::cout << "$ " << cmd << "\n";
+    return std::system(cmd.c_str()) == 0;
 }
 
 static void usage() {
@@ -226,7 +270,52 @@ int main(int argc, char** argv) {
         Codegen codegen(sema, seed, obfLevel);
         auto mod = codegen.emit(prog);
 
-        // IR-level obfuscation passes (polymorphism).
+        std::string base = inFile.substr(0, inFile.find_last_of('.'));
+        std::string tripleStr, compiler, cexe, libs;
+
+        // For --build, fold the forensic runtime into the same LLVM module.
+        // This is what lets the obfuscation passes (string encryption) cover
+        // runtime literals too, instead of leaving them plaintext in a
+        // separately-compiled object that never reaches the obfuscator.
+        if (doBuild) {
+            if (target == "mingw") {
+                tripleStr = "x86_64-pc-windows-gnu";
+                compiler = "x86_64-w64-mingw32-gcc";
+                cexe = ".exe";
+                libs = " -lws2_32 -liphlpapi -ladvapi32";
+            } else if (target == "native" || target == "linux") {
+                tripleStr = llvm::sys::getDefaultTargetTriple();
+                compiler = "cc";
+            } else {
+                throw std::runtime_error("unknown --target '" + target + "' (use native or mingw)");
+            }
+
+            std::string runtimeLL = base + "_rt.ll";
+            if (!compileRuntimeIR(JOCKY_RUNTIME_C, runtimeLL, target)) {
+                std::cerr << "runtime IR compilation failed\n";
+                return 1;
+            }
+            llvm::SMDiagnostic diag;
+            std::unique_ptr<llvm::Module> rtMod =
+                llvm::parseIRFile(runtimeLL, diag, mod->getContext());
+            if (!rtMod) {
+                diag.print("jocky", llvm::errs());
+                return 1;
+            }
+            if (llvm::Linker::linkModules(*mod, std::move(rtMod))) {
+                std::cerr << "failed to link runtime IR\n";
+                return 1;
+            }
+            if (llvm::verifyModule(*mod, &llvm::errs())) {
+                std::cerr << "module verification failed after linking runtime\n";
+                return 1;
+            }
+            // The pre-obfuscation IR still holds plaintext literals; don't leave
+            // it lying next to the (encrypted) binary.
+            std::remove(runtimeLL.c_str());
+        }
+
+        // IR-level obfuscation passes (polymorphism) over the combined module.
         if (obfLevel >= 1) {
             std::mt19937_64 obfRng(seed >= 0 ? static_cast<uint64_t>(seed) + 1 : std::random_device{}());
             obfuscate::run(*mod, obfRng, obfLevel);
@@ -251,21 +340,6 @@ int main(int argc, char** argv) {
             llvm::InitializeAllTargetMCs();
             llvm::InitializeAllAsmPrinters();
 
-            std::string tripleStr;
-            std::string compiler, cexe;
-            std::string libs;
-            if (target == "mingw") {
-                tripleStr = "x86_64-pc-windows-gnu";
-                compiler = "x86_64-w64-mingw32-gcc";
-                cexe = ".exe";
-                libs = " -lws2_32 -liphlpapi -ladvapi32";
-            } else if (target == "native" || target == "linux") {
-                tripleStr = llvm::sys::getDefaultTargetTriple();
-                compiler = "cc";
-            } else {
-                throw std::runtime_error("unknown --target '" + target + "' (use native or mingw)");
-            }
-
             llvm::Triple triple(tripleStr);
             std::string err;
             const llvm::Target* tgt = llvm::TargetRegistry::lookupTarget(triple, err);
@@ -275,21 +349,12 @@ int main(int argc, char** argv) {
             auto* tm = tgt->createTargetMachine(triple, "generic", "", topts, std::nullopt);
             if (!tm) throw std::runtime_error("cannot create target machine for " + tripleStr);
 
-            std::string base = inFile.substr(0, inFile.find_last_of('.'));
             std::string obj = base + ".o";
-            std::string runtimeObj = base + "_rt.o";
-
             if (!emitObject(*mod, *tm, obj)) return 1;
 
-            // Compile the forensic runtime and link.
-            std::string rccmd = compiler + " -O2 -c " + JOCKY_RUNTIME_C + " -o " + runtimeObj;
-            std::cout << "$ " << rccmd << "\n";
-            if (std::system(rccmd.c_str()) != 0) {
-                std::cout << "runtime compilation failed\n";
-                return 1;
-            }
+            // The forensic runtime is already linked into the object; just link.
             std::string exe = base + cexe;
-            std::string link = compiler + " -O2 -o " + exe + " " + obj + " " + runtimeObj + libs;
+            std::string link = compiler + " -O2 -o " + exe + " " + obj + libs;
             std::cout << "$ " << link << "\n";
             if (std::system(link.c_str()) != 0) {
                 std::cout << "link failed\n";

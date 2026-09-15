@@ -36,7 +36,7 @@ src/
   codegen.h/.cpp                        — LLVM IRBuilder codegen
   obfuscate.h/.cpp                      — IR-level polymorphism passes
   main.cpp                              — CLI, PassBuilder O2, object emit, link
-runtime/runtime.c                       — forensic stdlib (compiled on demand)
+runtime/runtime.c                       — forensic stdlib (lowered to IR, folded in)
 scripts/*.rd + *.expect                 — deterministic test programs
 tests/run_tests.sh                      — full suite at obf levels 0..3
 ```
@@ -68,16 +68,18 @@ tests/run_tests.sh                      — full suite at obf levels 0..3
 |---|---|
 | 0 | seeded renaming (functions, globals, allocas) + volatile build markers kept via `llvm.compiler.used` |
 | 1 | opaque predicates: `load volatile g; g*g >= 0` diamond branches that survive O2 |
-| 2 | per-string XOR encryptors (volatile decrypt loops, encrypted `.rodata`) + junk functions |
+| 2 | module-wide XOR string encryption (per-string keys, volatile-guarded decrypt at entry; covers linked runtime) + junk functions |
 | 3 | entry-point trampoline chain (1..3) burying the real `main` |
 
 ### Driver (`--build`)
 
 1. codegen → `Module`
-2. obfuscation passes
-3. `PassBuilder::buildPerModuleDefaultPipeline(O2)` (new PM)
-4. `TargetMachine::addPassesToEmitFile` (legacy PM) → `.o`
-5. `cc`/mingw-gcc compile `runtime.c` and link
+2. lower `runtime/runtime.c` to IR (clang `-emit-llvm`, mingw sysroot when
+   cross-compiling) and link it into the module
+3. obfuscation passes (string encryption now also covers runtime literals)
+4. `PassBuilder::buildPerModuleDefaultPipeline(O2)` (new PM)
+5. `TargetMachine::addPassesToEmitFile` (legacy PM) → `.o`
+6. `cc`/mingw-gcc link → binary
 
 ## 2. Work packages
 

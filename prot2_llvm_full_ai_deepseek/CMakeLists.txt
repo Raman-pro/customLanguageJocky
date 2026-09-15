@@ -32,9 +32,21 @@ execute_process(COMMAND ${LLVM_CONFIG_EXE} --libs core irreader
 execute_process(COMMAND ${LLVM_CONFIG_EXE} --ldflags
     OUTPUT_VARIABLE LLVM_LDFLAGS
     OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${LLVM_CONFIG_EXE} --bindir
+    OUTPUT_VARIABLE LLVM_BIN_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-message(STATUS "LLVM include: ${LLVM_INCLUDE_DIR}")
-message(STATUS "LLVM libs:    ${LLVM_LIBS}")
+# clang matching the LLVM version is used at --build time to lower
+# runtime/runtime.c to IR so it can be obfuscated with the user module.
+find_program(JOCKY_CLANG_EXE clang
+    HINTS ${LLVM_BIN_DIR} /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin)
+if(NOT JOCKY_CLANG_EXE)
+    set(JOCKY_CLANG_EXE clang)
+endif()
+
+message(STATUS "LLVM include:  ${LLVM_INCLUDE_DIR}")
+message(STATUS "LLVM libs:     ${LLVM_LIBS}")
+message(STATUS "Bundled clang: ${JOCKY_CLANG_EXE}")
 
 add_executable(jocky
     src/main.cpp
@@ -56,4 +68,5 @@ target_compile_options(jocky PRIVATE -Wall -Wextra ${LLVM_LDFLAGS})
 # C compiler at --build time to compile+link the user program against it.
 target_compile_definitions(jocky PRIVATE
     JOCKY_RUNTIME_C="${CMAKE_CURRENT_SOURCE_DIR}/runtime/runtime.c"
+    JOCKY_CLANG="${JOCKY_CLANG_EXE}"
 )

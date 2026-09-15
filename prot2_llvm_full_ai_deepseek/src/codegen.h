@@ -22,8 +22,8 @@
 // with a seeded RNG and per-build volatile build markers are added, so two
 // builds of the same script produce different IR and different binaries.
 //
-// `obfLevel` mirrors the CLI --obf-level. Levels >= 2 also select IR-level
-// string encryption and junk/trampoline passes (src/obfuscate.cpp).
+// `obfLevel` mirrors the CLI --obf-level; all obfuscation (including string
+// encryption) is applied afterwards over the whole module by src/obfuscate.cpp.
 class Codegen {
 public:
     Codegen(Sema& sema, int64_t seed, int obfLevel);
@@ -65,13 +65,9 @@ private:
     std::string emitBuildMarker();
     void addBuildMarkersToModule();
 
-    // ---- string encryption (obfLevel >= 2) ----------------------------------
-    llvm::Value* emitStringLiteral(const std::string& s);
-
     // ---- state ---------------------------------------------------------------
     Sema& sema_;
     int64_t seed_;
-    int obfLevel_;
     std::mt19937_64 rng_;
     std::unordered_map<std::string, std::string> renames_;
     std::unordered_map<std::string, llvm::AllocaInst*> currentScope_;
@@ -81,7 +77,6 @@ private:
     llvm::IRBuilder<> builder_{ctx_};
     llvm::BasicBlock* entryBlock_ = nullptr;     // alloca insertion point
     llvm::Function* curFn_ = nullptr;
-    std::unordered_map<std::string, llvm::Function*> strDecryptors_;  // string -> decryptor fn
     std::unordered_map<std::string, llvm::Value*> cstrings_;          // literal -> global ptr
     std::vector<llvm::GlobalVariable*> markers_;
     bool markersAdded_ = false;

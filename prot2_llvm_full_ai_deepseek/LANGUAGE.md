@@ -315,11 +315,16 @@ Every build is a **unique artifact** even for identical source:
 |---|---|---|
 | 0 | seeded renaming + volatile build markers | different bytes, same structure |
 | 1 | + IR opaque predicates (`g*g >= 0` on a volatile global) | extra always-true branches that survive -O2 |
-| 2 | + XOR string encryption (per-string decryptors) + junk functions | plaintext gone from the binary, dead code |
+| 2 | + XOR string encryption (module-wide, per-string keys) + junk functions | plaintext gone from the binary, dead code |
 | 3 | + entry-point trampoline chain | real `main` is buried behind 1..3 callers |
 
+At level 2 the runtime is lowered to LLVM IR and linked into the module before
+encryption, so the pass hides runtime literals (webhook URL, curl command, JSON
+keys) as well as `.rd` literals — `strings` on the built binary shows neither.
+
 Obfuscation never changes program semantics — every script produces the same
-output at every level (verified by `tests/run_tests.sh`).
+output at every level (verified by `tests/run_tests.sh` and the string-leak
+guardrail in `tests/run_string_leak_tests.sh`).
 
 ---
 

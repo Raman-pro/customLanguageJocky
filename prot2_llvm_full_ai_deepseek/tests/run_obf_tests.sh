@@ -48,6 +48,11 @@ for lvl in 0 1 2 3; do
     fi
 done
 
+# String-obfuscation guardrail: no sensitive literal may survive at lvl >= 2.
+if ! ./tests/run_string_leak_tests.sh; then
+    fail=$((fail+1))
+fi
+
 echo "---"
 echo "pass=$pass fail=$fail"
 [ "$fail" -eq 0 ]

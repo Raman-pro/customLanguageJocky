@@ -41,8 +41,10 @@ const std::unordered_map<std::string, RtSig> kRuntimeSigs = {
 }  // namespace
 
 Codegen::Codegen(Sema& sema, int64_t seed, int obfLevel)
-    : sema_(sema), seed_(seed), obfLevel_(obfLevel),
-      rng_(seed >= 0 ? static_cast<uint64_t>(seed) : std::random_device{}()) {}
+    : sema_(sema), seed_(seed),
+      rng_(seed >= 0 ? static_cast<uint64_t>(seed) : std::random_device{}()) {
+    (void)obfLevel;   // obfuscation is applied by obfuscate::run over the module
+}
 
 llvm::Type* Codegen::llvmType(const std::string& t) {
     if (t == "int") return llvm::Type::getInt32Ty(ctx_);
@@ -159,80 +161,6 @@ llvm::Value* Codegen::getCString(const std::string& s) {
 llvm::Value* Codegen::getPrintFormat(const std::string& type) {
     if (type == "int") return getCString("%d\n");
     return getCString("%s\n");
-}
-
-// ---- string literal (optionally encrypted at obfLevel >= 2) ------------------
-
-llvm::Value* Codegen::emitStringLiteral(const std::string& s) {
-    if (obfLevel_ < 2) return getCString(s);
-
-    auto it = strDecryptors_.find(s);
-    if (it != strDecryptors_.end()) {
-        return builder_.CreateCall(it->second);
-    }
-
-    // Encrypt the literal byte-for-byte; create a decryptor function with its
-    // own static buffer so concurrent string uses never clobber each other.
-    size_t n = s.size();
-    int key = 1 + static_cast<int>(rng_() % 255);
-    std::vector<uint8_t> enc(n);
-    for (size_t i = 0; i < n; ++i)
-        enc[i] = static_cast<uint8_t>(s[i]) ^ static_cast<uint8_t>(key);
-
-    std::string tag = randName();
-
-    // @enc = constant [n x i8]  (encrypted bytes stay in .rodata)
-    llvm::ArrayType* encTy = llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx_), n);
-    llvm::Constant* encInit = llvm::ConstantDataArray::get(ctx_, enc);
-    auto* encG = new llvm::GlobalVariable(*mod_, encTy, /*isConstant=*/true,
-                                          llvm::GlobalValue::InternalLinkage, encInit,
-                                          "j_enc_" + tag);
-    encG->setDSOLocal(true);
-
-    // @buf = internal global [n+1 x i8] zeroinitializer  (per-string static)
-    llvm::ArrayType* bufTy = llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx_), n + 1);
-    auto* bufG = new llvm::GlobalVariable(*mod_, bufTy, /*isConstant=*/false,
-                                          llvm::GlobalValue::InternalLinkage,
-                                          llvm::ConstantAggregateZero::get(bufTy),
-                                          "j_buf_" + tag);
-    bufG->setDSOLocal(true);
-
-    // define internal ptr @decrypt() { loop load volatile enc[i] ^ key -> buf[i]; buf[n]=0; ret buf }
-    llvm::FunctionType* ft = llvm::FunctionType::get(llvm::PointerType::get(ctx_, 0), {}, false);
-    auto* fn = llvm::Function::Create(ft, llvm::GlobalValue::InternalLinkage, "j_dc_" + tag, *mod_);
-    fn->setDSOLocal(true);
-
-    llvm::BasicBlock* entry = llvm::BasicBlock::Create(ctx_, "", fn);
-    llvm::BasicBlock* loop = llvm::BasicBlock::Create(ctx_, "loop", fn);
-    llvm::BasicBlock* done = llvm::BasicBlock::Create(ctx_, "done", fn);
-
-    llvm::IRBuilder<> b(entry);
-    b.CreateBr(loop);
-
-    b.SetInsertPoint(loop);
-    llvm::PHINode* idx = b.CreatePHI(llvm::Type::getInt32Ty(ctx_), 2, "i");
-    idx->addIncoming(llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0)), entry);
-    llvm::Value* p0 = b.CreateGEP(encTy, encG,
-                                  {llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0)), idx});
-    llvm::Value* e = b.CreateLoad(llvm::Type::getInt8Ty(ctx_), p0, /*isVolatile=*/true, "enc");
-    llvm::Value* d = b.CreateXor(e, llvm::ConstantInt::get(ctx_, llvm::APInt(8, key)));
-    llvm::Value* q0 = b.CreateGEP(bufTy, bufG,
-                                  {llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0)), idx});
-    b.CreateStore(d, q0);
-    llvm::Value* next = b.CreateAdd(idx, llvm::ConstantInt::get(ctx_, llvm::APInt(32, 1)));
-    idx->addIncoming(next, loop);
-    llvm::Value* cmp = b.CreateICmpULT(next, llvm::ConstantInt::get(ctx_, llvm::APInt(32, n)));
-    b.CreateCondBr(cmp, loop, done);
-
-    b.SetInsertPoint(done);
-    llvm::Value* last = b.CreateGEP(bufTy, bufG,
-                                    {llvm::ConstantInt::get(ctx_, llvm::APInt(32, 0)),
-                                     llvm::ConstantInt::get(ctx_, llvm::APInt(32, n))});
-    b.CreateStore(llvm::ConstantInt::get(ctx_, llvm::APInt(8, 0)), last);
-    b.CreateRet(bufG);
-
-    strDecryptors_[s] = fn;
-    return builder_.CreateCall(fn);
 }
 
 // ---- statements ---------------------------------------------------------------
@@ -377,7 +305,7 @@ llvm::Value* Codegen::emitExpr(const Expr& e) {
             return llvm::ConstantInt::get(ctx_, llvm::APInt(32, e.iVal, /*isSigned=*/true));
 
         case Expr::K::StrLit:
-            return emitStringLiteral(e.name);
+            return getCString(e.name);
 
         case Expr::K::BoolLit:
             return llvm::ConstantInt::get(ctx_, llvm::APInt(1, e.iVal ? 1 : 0));
@@ -457,7 +385,6 @@ llvm::Value* Codegen::emitBinary2(const Expr& e) {
 
     llvm::Value* l = emitExpr(*e.lhs);
     llvm::Value* r = emitExpr(*e.rhs);
-    llvm::Type* it = llvm::Type::getInt32Ty(ctx_);
 
     if (e.op == "+") return builder_.CreateAdd(l, r, "j_add");
     if (e.op == "-") return builder_.CreateSub(l, r, "j_sub");

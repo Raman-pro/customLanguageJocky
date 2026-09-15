@@ -1,0 +1,14 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+*.o
+*_rt.o
+*.dSYM/
+*.expect.out
+
+# Ghidra temp project databases
+**/ghidra_projects/proj.rep/
+**/ghidra_projects/proj.gpr

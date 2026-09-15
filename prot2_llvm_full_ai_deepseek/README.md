@@ -66,19 +66,25 @@ Runs every `scripts/*.rd` against its `.expect` at all four obfuscation levels
 .rd source
   └─ lexer → parser/AST → sema (type check)
        └─ LLVM IR codegen            (IRBuilder, in-memory module)
-            └─ obfuscation passes    (markers, opaque preds, strings, junk, trampoline)
-                 └─ PassBuilder O2   (new pass manager)
-                      └─ emit object (TargetMachine)
-                           └─ link against runtime/runtime.c → binary
+            └─ link runtime IR       (runtime.c → clang -emit-llvm, folded in)
+                 └─ obfuscation passes (markers, opaque preds, strings, junk, trampoline)
+                      └─ PassBuilder O2   (new pass manager)
+                           └─ emit object (TargetMachine)
+                                └─ link → binary
 ```
+
+The forensic runtime is lowered to LLVM IR and linked into the *same* module
+before obfuscation, so string encryption covers runtime literals (the lab
+webhook URL, the curl command, JSON keys) as well as user `.rd` literals.
 
 - `--seed` drives renaming + marker values: same seed → byte-identical binary,
   different seeds → different hashes.
 - `--obf-level 0-3` (default 2 when a seed is given, else 0):
   0 rename + build markers · 1 + opaque predicates · 2 + string encryption +
   junk functions · 3 + entry-point trampoline.
-- The forensic stdlib is a portable C runtime (`runtime/runtime.c`) compiled
-  and linked on demand; Windows-only collectors degrade gracefully elsewhere.
+- The forensic stdlib is a portable C runtime (`runtime/runtime.c`) lowered to
+  LLVM IR and folded into the module before obfuscation; Windows-only
+  collectors degrade gracefully elsewhere.
 
 ## Status
 
