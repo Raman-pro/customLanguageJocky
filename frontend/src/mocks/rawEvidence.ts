@@ -1,0 +1,46 @@
+export const rawEvidence = {
+  unusualConnection: {
+    pid: 6840,
+    process: "powershell.exe",
+    local_address: "192.0.2.17:49722",
+    remote_address: "198.51.100.42:443",
+    state: "ESTABLISHED",
+    first_seen_utc: "2026-09-15T09:34:12.000Z",
+  },
+  powershellProcess: {
+    pid: 6840,
+    ppid: 4312,
+    name: "powershell.exe",
+    user: "CORP\\r.singh",
+    command_line: "powershell.exe -NoProfile -File C:\\ProgramData\\sync.ps1",
+    signed: true,
+  },
+  driverExposure: {
+    name: "dbutil_2_3.sys",
+    path: "C:\\Windows\\System32\\drivers\\dbutil_2_3.sys",
+    publisher: "Dell Inc.",
+    signature: "valid",
+    catalog_match: "Known vulnerable driver exposure",
+    action: "Quarantine through approved endpoint controls",
+  },
+  scheduledTask: {
+    name: "UpdaterTelemetry",
+    path: "\\Microsoft\\Windows\\Application Experience",
+    principal: "SYSTEM",
+    created_utc: "2026-09-15T08:58:43.000Z",
+    command: "C:\\ProgramData\\Updater\\telemetry.exe",
+  },
+  ubuntuListener: {
+    pid: 2218,
+    process: "python3",
+    local_address: "0.0.0.0:8443",
+    state: "LISTEN",
+    user: "deploy",
+  },
+  stagedArchive: {
+    path: "C:\\ProgramData\\cache\\diag-0915.zip",
+    size_bytes: 1842304,
+    created_utc: "2026-09-15T09:31:08.000Z",
+    owner: "CORP\\r.singh",
+  },
+} as const;

@@ -22,6 +22,7 @@ Traditional forensic scripts and utilities fail when deployed on compromised or 
 
 ```
 SIH2026/
+├── frontend/                       # Local forensic console with mock evidence
 ├── prot2_llvm_full_ai_deepseek/    # [PRIMARY] Final JOCKY compiler & runtime (LLVM backend)
 │   ├── CMakeLists.txt              # Compiler build definition (LLVM 18+ required)
 │   ├── src/                        # Lexer, AST, Parser, Sema, Obfuscator, LLVM Codegen
@@ -65,6 +66,17 @@ SIH2026/
 ---
 
 ## Quick Start Guide
+
+### Frontend demo
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173/fleet`. The frontend uses prepared demonstration data.
+See [the frontend guide](frontend/README.md) for validation commands and details.
 
 ### 1. Building the Final JOCKY Compiler (Prot 2)
 Prerequisites: CMake 3.20+, C++17 compiler, and LLVM 18/19 (e.g. `brew install llvm` on macOS).
