@@ -1,0 +1,61 @@
+Fn is_prime -> bool (n:int)
+  If
+    Binary(<)
+      Ident(n)
+      IntLit(2)
+    Then:
+      Return        BoolLit(false)
+
+  Let i : int =    IntLit(2)
+
+  While
+    Binary(<=)
+      Binary(*)
+        Ident(i)
+        Ident(i)
+      Ident(n)
+    If
+      Binary(==)
+        Binary(%)
+          Ident(n)
+          Ident(i)
+        IntLit(0)
+      Then:
+        Return          BoolLit(false)
+
+    ExprStmt
+      Binary(=)
+        Ident(i)
+        Binary(+)
+          Ident(i)
+          IntLit(1)
+  Return    BoolLit(true)
+
+Fn main -> void ()
+  Let count : int =    IntLit(0)
+
+  Let n : int =    IntLit(2)
+
+  While
+    Binary(<)
+      Ident(count)
+      IntLit(8)
+    If
+      Call(is_prime)
+        Ident(n)
+      Then:
+        ExprStmt
+          Call(print)
+            Ident(n)
+        ExprStmt
+          Binary(=)
+            Ident(count)
+            Binary(+)
+              Ident(count)
+              IntLit(1)
+    ExprStmt
+      Binary(=)
+        Ident(n)
+        Binary(+)
+          Ident(n)
+          IntLit(1)

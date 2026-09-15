@@ -1,0 +1,243 @@
+; ModuleID = 'jocky'
+source_filename = "jocky"
+
+@j_s = private global [4 x i8] c"P\11\7F\00", align 1
+@j_m_j_1p29y2wo = internal global i32 37254
+@j_m_j_1tvqmn8t = internal global i32 43323
+@j_g_h5z3u9 = internal global i32 64427
+@llvm.compiler.used = appending global [6 x ptr] [ptr @j_m_j_1p29y2wo, ptr @j_m_j_1tvqmn8t, ptr @j_z_ykt44a, ptr @j_z_ircvdw, ptr @j_z_m20cbz, ptr @j_z_je8qhg], section "llvm.metadata"
+@j_sk_lysdft = internal global i32 117
+
+define internal i1 @j_yvbxa3zx(i32 %0) {
+j_pred_mc0l:
+  %j_g17 = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge18 = sext i32 %j_g17 to i64
+  %j_sq19 = mul i64 %j_ge18, %j_ge18
+  %j_c20 = icmp sge i64 %j_sq19, 0
+  br i1 %j_c20, label %j_pred_j1xx, label %j_dead_oyr9
+
+j_dead_oyr9:                                      ; preds = %j_pred_mc0l
+  call void @j_z_ykt44a()
+  br label %j_pred_j1xx
+
+j_pred_j1xx:                                      ; preds = %j_dead_oyr9, %j_pred_mc0l
+  %j_g13 = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge14 = sext i32 %j_g13 to i64
+  %j_sq15 = mul i64 %j_ge14, %j_ge14
+  %j_c16 = icmp sge i64 %j_sq15, 0
+  br i1 %j_c16, label %j_pred_mj1c, label %j_dead_m3wb
+
+j_dead_m3wb:                                      ; preds = %j_pred_j1xx
+  call void @j_z_ykt44a()
+  br label %j_pred_mj1c
+
+j_pred_mj1c:                                      ; preds = %j_dead_m3wb, %j_pred_j1xx
+  %j_g = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge = sext i32 %j_g to i64
+  %j_sq = mul i64 %j_ge, %j_ge
+  %j_c = icmp sge i64 %j_sq, 0
+  br i1 %j_c, label %entry, label %j_dead_yei9
+
+j_dead_yei9:                                      ; preds = %j_pred_mj1c
+  call void @j_z_ykt44a()
+  br label %entry
+
+entry:                                            ; preds = %j_dead_yei9, %j_pred_mj1c
+  %j_khv5jbov = alloca i32, align 4
+  %j_scsp2iiu = alloca i32, align 4
+  store i32 %0, ptr %j_scsp2iiu, align 4
+  %j_scsp2iiu1 = load i32, ptr %j_scsp2iiu, align 4
+  %j_lt = icmp slt i32 %j_scsp2iiu1, 2
+  br i1 %j_lt, label %j_then, label %j_else
+
+j_then:                                           ; preds = %entry
+  ret i1 false
+
+j_else:                                           ; preds = %entry
+  br label %j_merge
+
+j_merge:                                          ; preds = %j_else, %j_after
+  store i32 2, ptr %j_khv5jbov, align 4
+  br label %j_cond
+
+j_after:                                          ; No predecessors!
+  br label %j_merge
+
+j_cond:                                           ; preds = %j_merge9, %j_merge
+  %j_khv5jbov2 = load i32, ptr %j_khv5jbov, align 4
+  %j_khv5jbov3 = load i32, ptr %j_khv5jbov, align 4
+  %j_mul = mul i32 %j_khv5jbov2, %j_khv5jbov3
+  %j_scsp2iiu4 = load i32, ptr %j_scsp2iiu, align 4
+  %j_le = icmp sle i32 %j_mul, %j_scsp2iiu4
+  br i1 %j_le, label %j_body, label %j_end
+
+j_body:                                           ; preds = %j_cond
+  %j_scsp2iiu5 = load i32, ptr %j_scsp2iiu, align 4
+  %j_khv5jbov6 = load i32, ptr %j_khv5jbov, align 4
+  %j_mod = srem i32 %j_scsp2iiu5, %j_khv5jbov6
+  %j_eq = icmp eq i32 %j_mod, 0
+  br i1 %j_eq, label %j_then7, label %j_else8
+
+j_end:                                            ; preds = %j_cond
+  ret i1 true
+
+j_then7:                                          ; preds = %j_body
+  ret i1 false
+
+j_else8:                                          ; preds = %j_body
+  br label %j_merge9
+
+j_merge9:                                         ; preds = %j_else8, %j_after10
+  %j_khv5jbov11 = load i32, ptr %j_khv5jbov, align 4
+  %j_add = add i32 %j_khv5jbov11, 1
+  store i32 %j_add, ptr %j_khv5jbov, align 4
+  br label %j_cond
+
+j_after10:                                        ; No predecessors!
+  br label %j_merge9
+
+j_after12:                                        ; No predecessors!
+  ret i1 false
+}
+
+define dso_local i32 @j_tr_yqionm() {
+j_pred_bbc6:
+  %j_g11 = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge12 = sext i32 %j_g11 to i64
+  %j_sq13 = mul i64 %j_ge12, %j_ge12
+  %j_c14 = icmp sge i64 %j_sq13, 0
+  br i1 %j_c14, label %j_pred_hh1h, label %j_dead_30dh
+
+j_dead_30dh:                                      ; preds = %j_pred_bbc6
+  call void @j_z_ykt44a()
+  br label %j_pred_hh1h
+
+j_pred_hh1h:                                      ; preds = %j_dead_30dh, %j_pred_bbc6
+  %j_g7 = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge8 = sext i32 %j_g7 to i64
+  %j_sq9 = mul i64 %j_ge8, %j_ge8
+  %j_c10 = icmp sge i64 %j_sq9, 0
+  br i1 %j_c10, label %j_pred_4p0z, label %j_dead_fh71
+
+j_dead_fh71:                                      ; preds = %j_pred_hh1h
+  call void @j_z_ykt44a()
+  br label %j_pred_4p0z
+
+j_pred_4p0z:                                      ; preds = %j_dead_fh71, %j_pred_hh1h
+  %j_g = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge = sext i32 %j_g to i64
+  %j_sq = mul i64 %j_ge, %j_ge
+  %j_c = icmp sge i64 %j_sq, 0
+  br i1 %j_c, label %entry, label %j_dead_soti
+
+j_dead_soti:                                      ; preds = %j_pred_4p0z
+  call void @j_z_ykt44a()
+  br label %entry
+
+entry:                                            ; preds = %j_dead_soti, %j_pred_4p0z
+  call void @j_string_init()
+  %j_scsp2iiu = alloca i32, align 4
+  %j_70naf2y9 = alloca i32, align 4
+  store i32 0, ptr %j_70naf2y9, align 4
+  store i32 2, ptr %j_scsp2iiu, align 4
+  br label %j_cond
+
+j_cond:                                           ; preds = %j_merge, %entry
+  %j_70naf2y91 = load i32, ptr %j_70naf2y9, align 4
+  %j_lt = icmp slt i32 %j_70naf2y91, 8
+  br i1 %j_lt, label %j_body, label %j_end
+
+j_body:                                           ; preds = %j_cond
+  %j_scsp2iiu2 = load i32, ptr %j_scsp2iiu, align 4
+  %0 = call i1 @j_yvbxa3zx(i32 %j_scsp2iiu2)
+  br i1 %0, label %j_then, label %j_else
+
+j_end:                                            ; preds = %j_cond
+  ret i32 0
+
+j_then:                                           ; preds = %j_body
+  %j_scsp2iiu3 = load i32, ptr %j_scsp2iiu, align 4
+  %1 = call i32 (ptr, ...) @printf(ptr @j_s, i32 %j_scsp2iiu3)
+  %j_70naf2y94 = load i32, ptr %j_70naf2y9, align 4
+  %j_add = add i32 %j_70naf2y94, 1
+  store i32 %j_add, ptr %j_70naf2y9, align 4
+  br label %j_merge
+
+j_else:                                           ; preds = %j_body
+  br label %j_merge
+
+j_merge:                                          ; preds = %j_else, %j_then
+  %j_scsp2iiu5 = load i32, ptr %j_scsp2iiu, align 4
+  %j_add6 = add i32 %j_scsp2iiu5, 1
+  store i32 %j_add6, ptr %j_scsp2iiu, align 4
+  br label %j_cond
+}
+
+declare i32 @printf(ptr, ...)
+
+define internal void @j_z_ykt44a() {
+  unreachable
+}
+
+define internal void @j_z_ircvdw() {
+  unreachable
+}
+
+define internal void @j_z_m20cbz() {
+  unreachable
+}
+
+define internal void @j_z_je8qhg() {
+  unreachable
+}
+
+define internal void @j_string_init() {
+j_pred_c8pp:
+  %j_g = load volatile i32, ptr @j_g_h5z3u9, align 4
+  %j_ge = sext i32 %j_g to i64
+  %j_sq = mul i64 %j_ge, %j_ge
+  %j_c1 = icmp sge i64 %j_sq, 0
+  br i1 %j_c1, label %entry, label %j_dead_7uk1
+
+j_dead_7uk1:                                      ; preds = %j_pred_c8pp
+  call void @j_z_ykt44a()
+  br label %entry
+
+entry:                                            ; preds = %j_dead_7uk1, %j_pred_c8pp
+  br label %j_dec
+
+j_dec:                                            ; preds = %j_dec, %entry
+  %j_i = phi i32 [ 0, %entry ], [ %j_next, %j_dec ]
+  %j_kv = load volatile i32, ptr @j_sk_lysdft, align 4
+  %j_k8 = trunc i32 %j_kv to i8
+  %j_p = getelementptr [4 x i8], ptr @j_s, i32 0, i32 %j_i
+  %j_c = load i8, ptr %j_p, align 1
+  %j_d = xor i8 %j_c, %j_k8
+  store i8 %j_d, ptr %j_p, align 1
+  %j_next = add i32 %j_i, 1
+  %j_cmp = icmp ult i32 %j_next, 3
+  br i1 %j_cmp, label %j_dec, label %j_done
+
+j_done:                                           ; preds = %j_dec
+  ret void
+}
+
+define internal i32 @j_tr_ksi5f7() {
+  %1 = call i32 @j_tr_yqionm()
+  ret i32 %1
+}
+
+define internal i32 @j_tr_md3f8f() {
+  %1 = call i32 @j_tr_ksi5f7()
+  ret i32 %1
+}
+
+define internal i32 @j_tr_rqm43v() {
+  %1 = call i32 @j_tr_md3f8f()
+  ret i32 %1
+}
+
+define dso_local i32 @main() {
+  %1 = call i32 @j_tr_rqm43v()
+  ret i32 %1
+}

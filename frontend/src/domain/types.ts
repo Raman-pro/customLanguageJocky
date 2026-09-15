@@ -1,5 +1,5 @@
 export type HostPlatform = "windows-11" | "windows-server-2022" | "ubuntu-24.04";
-export type HostState = "online" | "collecting" | "attention";
+export type HostState = "offline" | "collecting" | "attention";
 export type Severity = "critical" | "high" | "medium" | "informational";
 export type EvidenceCategory = "process" | "network" | "file" | "persistence" | "driver";
 export type RunStage = "idle" | "queued" | "prepared" | "collecting" | "received" | "verified";

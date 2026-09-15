@@ -15,7 +15,6 @@ export function App() {
           <Routes>
             <Route path="/" element={<Navigate to={ROUTES.fleet} replace />} />
             <Route path={ROUTES.fleet} element={<FleetPage />} />
-            <Route path={ROUTES.case} element={<CasePage />} />
             <Route path={ROUTES.evidence} element={<EvidencePage />} />
             <Route path={ROUTES.buildProof} element={<BuildProofPage />} />
             <Route path="*" element={<Navigate to={ROUTES.fleet} replace />} />

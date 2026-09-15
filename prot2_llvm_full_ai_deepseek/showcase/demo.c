@@ -1,8 +1,11 @@
-fn is_prime(n: int) : bool {
+#include <stdio.h>
+#include <stdbool.h>
+
+bool is_prime(int n) {
     if (n < 2) {
         return false;
     }
-    let i: int = 2;
+    int i = 2;
     while (i * i <= n) {
         if (n % i == 0) {
             return false;
@@ -12,14 +15,15 @@ fn is_prime(n: int) : bool {
     return true;
 }
 
-fn main() {
-    let count: int = 0;
-    let n: int = 2;
+int main(void) {
+    int count = 0;
+    int n = 2;
     while (count < 8) {
         if (is_prime(n)) {
-            print(n);
+            printf("%d\n", n);
             count = count + 1;
         }
         n = n + 1;
     }
+    return 0;
 }

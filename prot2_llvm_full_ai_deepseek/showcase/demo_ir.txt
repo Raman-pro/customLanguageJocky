@@ -1,0 +1,107 @@
+; ModuleID = 'jocky'
+source_filename = "jocky"
+
+@j_s = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@j_m_j_dngma0we = internal global i32 26141
+@j_m_j_vstwu8pz = internal global i32 32583
+@llvm.compiler.used = appending global [2 x ptr] [ptr @j_m_j_dngma0we, ptr @j_m_j_vstwu8pz], section "llvm.metadata"
+
+define internal i1 @is_prime(i32 %0) {
+entry:
+  %i = alloca i32, align 4
+  %n = alloca i32, align 4
+  store i32 %0, ptr %n, align 4
+  %n1 = load i32, ptr %n, align 4
+  %j_lt = icmp slt i32 %n1, 2
+  br i1 %j_lt, label %j_then, label %j_else
+
+j_then:                                           ; preds = %entry
+  ret i1 false
+
+j_else:                                           ; preds = %entry
+  br label %j_merge
+
+j_merge:                                          ; preds = %j_else, %j_after
+  store i32 2, ptr %i, align 4
+  br label %j_cond
+
+j_after:                                          ; No predecessors!
+  br label %j_merge
+
+j_cond:                                           ; preds = %j_merge9, %j_merge
+  %i2 = load i32, ptr %i, align 4
+  %i3 = load i32, ptr %i, align 4
+  %j_mul = mul i32 %i2, %i3
+  %n4 = load i32, ptr %n, align 4
+  %j_le = icmp sle i32 %j_mul, %n4
+  br i1 %j_le, label %j_body, label %j_end
+
+j_body:                                           ; preds = %j_cond
+  %n5 = load i32, ptr %n, align 4
+  %i6 = load i32, ptr %i, align 4
+  %j_mod = srem i32 %n5, %i6
+  %j_eq = icmp eq i32 %j_mod, 0
+  br i1 %j_eq, label %j_then7, label %j_else8
+
+j_end:                                            ; preds = %j_cond
+  ret i1 true
+
+j_then7:                                          ; preds = %j_body
+  ret i1 false
+
+j_else8:                                          ; preds = %j_body
+  br label %j_merge9
+
+j_merge9:                                         ; preds = %j_else8, %j_after10
+  %i11 = load i32, ptr %i, align 4
+  %j_add = add i32 %i11, 1
+  store i32 %j_add, ptr %i, align 4
+  br label %j_cond
+
+j_after10:                                        ; No predecessors!
+  br label %j_merge9
+
+j_after12:                                        ; No predecessors!
+  ret i1 false
+}
+
+define dso_local i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  %count = alloca i32, align 4
+  store i32 0, ptr %count, align 4
+  store i32 2, ptr %n, align 4
+  br label %j_cond
+
+j_cond:                                           ; preds = %j_merge, %entry
+  %count1 = load i32, ptr %count, align 4
+  %j_lt = icmp slt i32 %count1, 8
+  br i1 %j_lt, label %j_body, label %j_end
+
+j_body:                                           ; preds = %j_cond
+  %n2 = load i32, ptr %n, align 4
+  %0 = call i1 @is_prime(i32 %n2)
+  br i1 %0, label %j_then, label %j_else
+
+j_end:                                            ; preds = %j_cond
+  ret i32 0
+
+j_then:                                           ; preds = %j_body
+  %n3 = load i32, ptr %n, align 4
+  %1 = call i32 (ptr, ...) @printf(ptr @j_s, i32 %n3)
+  %count4 = load i32, ptr %count, align 4
+  %j_add = add i32 %count4, 1
+  store i32 %j_add, ptr %count, align 4
+  br label %j_merge
+
+j_else:                                           ; preds = %j_body
+  br label %j_merge
+
+j_merge:                                          ; preds = %j_else, %j_then
+  %n5 = load i32, ptr %n, align 4
+  %j_add6 = add i32 %n5, 1
+  store i32 %j_add6, ptr %n, align 4
+  br label %j_cond
+}
+
+declare i32 @printf(ptr, ...)
