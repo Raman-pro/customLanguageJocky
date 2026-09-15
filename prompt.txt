@@ -1,0 +1,15 @@
+The user has provided the following instruction alongside the skill invocation: Ok 
+so we are ready with the ppt and prototype so the ppt content is present in 
+'/Users/ramanjotsingh/Documents/SIH2026/Presentation speaking content' in which all 
+the files have all the required details you need to about our hackathon ps and the 
+content that we are going to display for our hackathon now we have also built a 
+prototype for the same we need a way to present this ppt I want you to go through 
+our current prototype analyse it and create all of the ppt content and plan multiple
+ways in which we can present our ppt like one way you can pick it to be type of 
+story in other way direct forward you can be creative and suggest different way of 
+the ppt presentation talking points and also I want you to create each and every 
+question that can be asked from the ppt from easy,medium tough to very very very 
+hard that can be asked from the ppt in simple easy to understand language that even 
+non cybersecurity background judges can understand
+We are given the time of 5 minutes for the ppt
+we are not expecting the judge to go through the entire ppt so we have to explain each topic of the ppt in simple language they can understand and preferably in a story sort of way
